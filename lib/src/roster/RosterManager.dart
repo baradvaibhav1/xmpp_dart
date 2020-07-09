@@ -35,8 +35,6 @@ class RosterManager {
 
   Map<Jid, Buddy> _rosterMap = Map<Jid, Buddy>();
 
-
-
   Connection _connection;
 
   void _queryForRoster() {
@@ -88,11 +86,12 @@ class RosterManager {
     iqStanza.addChild(queryElement);
     XmppElement itemElement = XmppElement();
     itemElement.name = "item";
-    itemElement.addChild(itemElement);
+
     itemElement.addAttribute(XmppAttribute('jid', rosterItem.jid.userAtDomain));
     itemElement.addAttribute(XmppAttribute('subscription', 'remove'));
     _myUnrespondedIqStanzas[iqStanza.id] = Tuple2(iqStanza, completer);
     ;
+    queryElement.addChild(itemElement);
     _connection.writeStanza(iqStanza);
     return completer.future;
   }
