@@ -63,14 +63,17 @@ class RosterManager {
     XmppElement queryElement = XmppElement();
     queryElement.name = 'query';
     queryElement.addAttribute(XmppAttribute('xmlns', 'jabber:iq:roster'));
+
     XmppElement itemElement = XmppElement();
     itemElement.name = "item";
     itemElement.addAttribute(XmppAttribute('jid', rosterItem.jid.userAtDomain));
     if (rosterItem.name != null) {
       itemElement.addAttribute(XmppAttribute('name', rosterItem.name));
     }
+
     queryElement.addChild(itemElement);
     iqStanza.addChild(queryElement);
+
     _myUnrespondedIqStanzas[iqStanza.id] = Tuple2(iqStanza, completer);
     _connection.writeStanza(iqStanza);
     return completer.future;
