@@ -1,126 +1,137 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:xmpp_stone/xmpp_stone.dart' as xmpp;
-import 'dart:io';
-import "package:console/console.dart";
-import 'package:image/image.dart' as image;
 
 main(List<String> arguments) {
-  print("Type user@domain:");
-  //var userAtDomain = stdin.readLineSync(encoding: utf8);
-  var userAtDomain = 'nemanja@127.0.0.1';
+  xmpp.Connection connection = connectUser();
+  addConnectionStateListener(connection);
+}
 
-  ///var userAtDomain = 'a1@is-a-furry.org';
-  ///
-  print("Type password");
-  var password = '1';
-  //var password = stdin.readLineSync(encoding: utf8);
-  //var password = '8027';
-//  print("Type port");
-//  int port;
-//  try {
-//    port = int.parse(stdin.readLineSync(encoding: utf8));
-//  } catch (e) {
-//    port = 5222;
-//  }
+xmpp.Connection connectUser() {
+  var userAtDomain = 'shubham@whocares.app';
+  var password = '123456';
+
   xmpp.Jid jid = xmpp.Jid.fromFullJid(userAtDomain);
-  xmpp.XmppAccountSettings account =
-      xmpp.XmppAccountSettings(userAtDomain, jid.local, jid.domain, password, 5222);
+  xmpp.XmppAccountSettings account = xmpp.XmppAccountSettings(
+    userAtDomain,
+    jid.local,
+    jid.domain,
+    password,
+    5222,
+    host: '167.99.197.0',
+  );
   xmpp.Connection connection = xmpp.Connection(account);
   connection.connect();
-  xmpp.MessagesListener messagesListener = ExampleMessagesListener();
-  ExampleConnectionStateChangedListener(connection, messagesListener);
-  xmpp.PresenceManager presenceManager =
-      xmpp.PresenceManager.getInstance(connection);
-  presenceManager.subscriptionStream.listen((streamEvent) {
-    if (streamEvent.type == xmpp.SubscriptionEventType.REQUEST) {
-      print("Accepting presence request");
-      presenceManager.acceptSubscription(streamEvent.jid);
-    }
-  });
-  var receiver = "nemanja2@test";
-  xmpp.Jid receiverJid = xmpp.Jid.fromFullJid(receiver);
-  xmpp.MessageHandler messageHandler =
-  xmpp.MessageHandler.getInstance(connection);
-  getConsoleStream().asBroadcastStream().listen((String str) {
-    messageHandler.sendMessage(receiverJid, str);
-  });
+  return connection;
+}
+
+void addConnectionStateListener(xmpp.Connection connection) {
+  ExampleConnectionStateChangedListener(connection);
 }
 
 class ExampleConnectionStateChangedListener
     implements xmpp.ConnectionStateChangedListener {
   xmpp.Connection _connection;
-  xmpp.MessagesListener _messagesListener;
+  xmpp.VCardManager _vCardManager;
+  xmpp.MessageHandler _messageHandler;
+  xmpp.RosterManager _rosterManager;
+  xmpp.PresenceManager _presenceManager;
+  xmpp.Jid _receiverJid;
 
-  StreamSubscription<String> subscription;
-
-  ExampleConnectionStateChangedListener(
-      xmpp.Connection connection, xmpp.MessagesListener messagesListener) {
+  ExampleConnectionStateChangedListener(xmpp.Connection connection) {
     _connection = connection;
-    _messagesListener = messagesListener;
     _connection.connectionStateStream.listen(onConnectionStateChanged);
+    _vCardManager = xmpp.VCardManager(_connection);
+    _messageHandler = xmpp.MessageHandler.getInstance(_connection);
+    _rosterManager = xmpp.RosterManager.getInstance(_connection);
+    _presenceManager = xmpp.PresenceManager.getInstance(_connection);
   }
 
   @override
   void onConnectionStateChanged(xmpp.XmppConnectionState state) {
     if (state == xmpp.XmppConnectionState.Ready) {
-      print("Connected");
-      xmpp.VCardManager vCardManager = xmpp.VCardManager(_connection);
-      vCardManager.getSelfVCard().then((vCard) {
-        if (vCard != null) {
-          print("Your info" + vCard.buildXmlString());
-        }
-      });
-      xmpp.MessageHandler messageHandler =
-          xmpp.MessageHandler.getInstance(_connection);
-      xmpp.RosterManager rosterManager =
-          xmpp.RosterManager.getInstance(_connection);
-      messageHandler.messagesStream.listen(_messagesListener.onNewMessage);
-      sleep(const Duration(seconds: 1));
-      //print("Enter receiver jid: ");
-      //var receiver = stdin.readLineSync(encoding: utf8);
-      var receiver = "nemanja2@test";
-      xmpp.Jid receiverJid = xmpp.Jid.fromFullJid(receiver);
-      rosterManager.addRosterItem(xmpp.Buddy(receiverJid)).then((result) {
-        if (result.description != null) {
-          print("add roster" + result.description);
-        }
-      });
-      sleep(const Duration(seconds: 1));
-      vCardManager.getVCardFor(receiverJid).then((vCard) {
-        if (vCard != null) {
-          print("Receiver info" + vCard.buildXmlString());
-          if (vCard != null && vCard.image != null) {
-            var file = File('test456789.jpg')
-              ..writeAsBytesSync(image.encodeJpg(vCard.image));
-            print("IMAGE SAVED TO: ${file.path}");
-          }
-        }
-      });
-      xmpp.PresenceManager presenceManager = xmpp.PresenceManager.getInstance(_connection);
-      presenceManager.presenceStream.listen(onPresence);
+      print("CONNECTED");
+      getMyVCard();
+
+      //add online listener
+      addPresenceListener();
+
+      //get all roster contact
+      _getChatRoster();
+
+      //add a receiver
+      addBuddyReceiver();
+
+      //add message listener
+      addNewMessageReceivedListener();
+
+      //send meassage
+      sendMessage();
     }
   }
 
-  void onPresence(xmpp.PresenceData event) {
-    print("presence Event from " + event.jid.fullJid + " PRESENCE: " + event.showElement.toString());
+  void getMyVCard() {
+    _vCardManager.getSelfVCard().then((vCard) {
+      if (vCard != null) {
+        print("MY VCARD : " + vCard.buildXmlString());
+      }
+    });
   }
-}
 
-Stream<String> getConsoleStream() {
-  return Console.adapter.byteStream().map((bytes) {
-    var str = ascii.decode(bytes);
-    str = str.substring(0, str.length - 1);
-    return str;
-  });
+  void addBuddyReceiver() {
+    var receiver = "vaibhav@whocares.app";
+    _receiverJid = xmpp.Jid.fromFullJid(receiver);
+    _rosterManager.addRosterItem(xmpp.Buddy(_receiverJid)).then((result) {
+      if (result.description != null) {
+        print("add roster" + result.description);
+      }
+    });
+    getBuddyVCard();
+  }
+
+  void addNewMessageReceivedListener() {
+    _messageHandler.messagesStream
+        .listen(ExampleMessagesListener().onNewMessage);
+  }
+
+  void addPresenceListener() {
+    _presenceManager.subscriptionStream.listen((streamEvent) {
+      if (streamEvent.type == xmpp.SubscriptionEventType.REQUEST) {
+        print("Accepting presence request");
+        _presenceManager.acceptSubscription(streamEvent.jid);
+      }
+    });
+    _presenceManager.presenceStream.listen(onPresence);
+  }
+
+  void sendMessage() {
+    _messageHandler.sendMessage(_receiverJid, 'Hi this is Vaibhav');
+  }
+
+  void getBuddyVCard() {
+    _vCardManager.getVCardFor(_receiverJid).then((vCard) {
+      if (vCard != null) {
+        print("RECEIVER VCARD : " + vCard.buildXmlString());
+      }
+    });
+  }
+
+  void onPresence(xmpp.PresenceData event) {
+    print(
+        "PRESENCE EVENT FROM ${event.jid.fullJid} PRESENCE: ${event.showElement.toString()}");
+  }
+
+  void _getChatRoster() {
+    _rosterManager.rosterStream.listen((event) {
+      print("Roster -> " + event.toString());
+    });
+  }
 }
 
 class ExampleMessagesListener implements xmpp.MessagesListener {
   @override
   onNewMessage(xmpp.MessageStanza message) {
     if (message.body != null) {
-      print(format(
-          "New Message from {color.blue}${message.fromJid.userAtDomain}{color.end} message: {color.red}${message.body}{color.end}"));
+      print(
+          "New Message from ${message.fromJid.userAtDomain} message: ${message.body}");
     }
   }
 }
