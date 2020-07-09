@@ -63,19 +63,29 @@ class RosterManager {
     XmppElement queryElement = XmppElement();
     queryElement.name = 'query';
     queryElement.addAttribute(XmppAttribute('xmlns', 'jabber:iq:roster'));
-    iqStanza.addChild(queryElement);
     XmppElement itemElement = XmppElement();
     itemElement.name = "item";
-
     itemElement.addAttribute(XmppAttribute('jid', rosterItem.jid.userAtDomain));
     if (rosterItem.name != null) {
       itemElement.addAttribute(XmppAttribute('name', rosterItem.name));
     }
-    itemElement.addChild(itemElement);
+    queryElement.addChild(itemElement);
+    iqStanza.addChild(queryElement);
     _myUnrespondedIqStanzas[iqStanza.id] = Tuple2(iqStanza, completer);
     _connection.writeStanza(iqStanza);
     return completer.future;
   }
+
+  <iq from='juliet@example.com/balcony'
+       id='ph1xaz53'
+       type='set'>
+     <query xmlns='jabber:iq:roster'>
+       <item jid='nurse@example.com'
+             name='Nurse'>
+         <group>Servants</group>
+       </item>
+     </query>
+   </iq>
 
   Future<IqStanzaResult> removeRosterItem(Buddy rosterItem) {
     var completer = Completer();
