@@ -5,8 +5,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Dart",
-            "program": "example/main.dart",
+            "name": "Flutter",
+            "program": "chat/lib/main.dart",
             "request": "launch",
             "type": "dart"
         }
