@@ -76,17 +76,6 @@ class RosterManager {
     return completer.future;
   }
 
-  <iq from='juliet@example.com/balcony'
-       id='ph1xaz53'
-       type='set'>
-     <query xmlns='jabber:iq:roster'>
-       <item jid='nurse@example.com'
-             name='Nurse'>
-         <group>Servants</group>
-       </item>
-     </query>
-   </iq>
-
   Future<IqStanzaResult> removeRosterItem(Buddy rosterItem) {
     var completer = Completer();
     IqStanza iqStanza =
